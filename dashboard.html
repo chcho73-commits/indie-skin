@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>브랜드 대시보드 — INDIE SKIN</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Sans:wght@300;400;500&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --cream: #F7F3EE; --warm-white: #FDFAF6; --sand: #E8DDD0;
+    --clay: #C4A882; --earth: #8B6F52; --dark: #1C1410;
+    --muted: #9A8878; --accent: #C17F5A; --green: #5A7A5C; --rose: #C4807A;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans','Noto Sans KR',sans-serif; background:var(--cream); color:var(--dark); min-height:100vh; }
+
+  /* NAV */
+  nav { position:sticky; top:0; z-index:100; background:var(--warm-white); border-bottom:1px solid var(--sand); padding:0 48px; display:flex; align-items:center; justify-content:space-between; height:64px; }
+  .logo { font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:600; letter-spacing:.2em; color:var(--dark); text-transform:uppercase; text-decoration:none; }
+  .logo span { color:var(--accent); }
+  .nav-right { display:flex; align-items:center; gap:20px; }
+  .nav-brand { font-size:13px; color:var(--muted); }
+  .nav-brand strong { color:var(--dark); }
+  .btn-logout { padding:8px 16px; border:1px solid var(--sand); background:transparent; font-family:inherit; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); cursor:pointer; transition:all .2s; }
+  .btn-logout:hover { border-color:var(--dark); color:var(--dark); }
+  .nav-home { font-size:12px; letter-spacing:.08em; color:var(--muted); text-decoration:none; text-transform:uppercase; }
+  .nav-home:hover { color:var(--dark); }
+
+  /* MAIN */
+  .dashboard-wrap { max-width:1100px; margin:0 auto; padding:48px 48px 100px; }
+
+  /* GREETING */
+  .greeting { margin-bottom:40px; }
+  .greeting-tag { font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); margin-bottom:10px; }
+  .greeting h1 { font-family:'Cormorant Garamond',serif; font-size:clamp(28px,4vw,42px); font-weight:300; line-height:1.2; }
+  .greeting h1 em { font-style:italic; color:var(--earth); }
+
+  /* STATS */
+  .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:2px; margin-bottom:48px; }
+  .stat-card { background:var(--warm-white); padding:28px 24px; border:1px solid var(--sand); }
+  .stat-card-label { font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+  .stat-card-num { font-family:'Cormorant Garamond',serif; font-size:40px; font-weight:300; color:var(--dark); line-height:1; margin-bottom:6px; }
+  .stat-card-sub { font-size:11px; color:var(--muted); }
+  .stat-card.highlight { background:var(--dark); border-color:var(--dark); }
+  .stat-card.highlight .stat-card-label { color:rgba(247,243,238,.5); }
+  .stat-card.highlight .stat-card-num { color:var(--clay); }
+  .stat-card.highlight .stat-card-sub { color:rgba(247,243,238,.4); }
+
+  /* SECTION HEADER */
+  .section-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+  .section-title { font-family:'Cormorant Garamond',serif; font-size:24px; font-weight:400; }
+  .btn-add { display:flex; align-items:center; gap:8px; padding:10px 20px; background:var(--dark); color:var(--cream); border:none; font-family:inherit; font-size:12px; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; text-decoration:none; transition:background .2s; }
+  .btn-add:hover { background:var(--earth); }
+
+  /* PRODUCT TABLE */
+  .product-table { width:100%; border-collapse:collapse; background:var(--warm-white); }
+  .product-table th { padding:14px 20px; font-size:10px; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); text-align:left; border-bottom:2px solid var(--sand); white-space:nowrap; }
+  .product-table td { padding:20px; border-bottom:1px solid var(--sand); vertical-align:middle; }
+  .product-table tr:last-child td { border-bottom:none; }
+  .product-table tr:hover td { background:rgba(232,221,208,.2); }
+
+  /* PRODUCT ROW */
+  .product-thumb { width:56px; height:56px; object-fit:cover; flex-shrink:0; }
+  .product-info { display:flex; align-items:center; gap:14px; }
+  .product-name { font-size:14px; font-weight:500; margin-bottom:3px; }
+  .product-brand-label { font-size:11px; color:var(--muted); letter-spacing:.05em; }
+
+  /* D-DAY INDICATOR */
+  .dday-wrap { display:flex; flex-direction:column; gap:6px; min-width:120px; }
+  .dday-bar-bg { height:4px; background:var(--sand); border-radius:2px; overflow:hidden; }
+  .dday-bar { height:100%; border-radius:2px; transition:width .3s; }
+  .dday-bar.safe { background:var(--green); }
+  .dday-bar.warn { background:var(--accent); }
+  .dday-bar.danger { background:var(--rose); }
+  .dday-text { font-size:12px; font-weight:500; }
+  .dday-text.safe { color:var(--green); }
+  .dday-text.warn { color:var(--accent); }
+  .dday-text.danger { color:var(--rose); }
+  .dday-date { font-size:10px; color:var(--muted); }
+
+  /* STATUS BADGE */
+  .status-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; font-size:10px; letter-spacing:.1em; text-transform:uppercase; }
+  .status-active { background:rgba(90,122,92,.1); color:var(--green); border:1px solid rgba(90,122,92,.25); }
+  .status-ending { background:rgba(193,127,90,.1); color:var(--accent); border:1px solid rgba(193,127,90,.25); }
+  .status-expired { background:rgba(196,128,122,.1); color:var(--rose); border:1px solid rgba(196,128,122,.25); }
+
+  .cat-badge { display:inline-block; padding:3px 10px; font-size:10px; letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--sand); color:var(--muted); }
+
+  /* TABLE ACTIONS */
+  .action-btns { display:flex; gap:8px; }
+  .btn-action { padding:6px 12px; font-family:inherit; font-size:11px; letter-spacing:.05em; background:transparent; border:1px solid var(--sand); color:var(--muted); cursor:pointer; transition:all .2s; white-space:nowrap; }
+  .btn-action:hover { border-color:var(--dark); color:var(--dark); }
+  .btn-action.danger:hover { border-color:var(--rose); color:var(--rose); }
+
+  /* SUBSCRIBE CARD */
+  .subscribe-card { margin-top:48px; background:var(--dark); padding:40px 48px; display:grid; grid-template-columns:1fr auto; gap:32px; align-items:center; }
+  .sub-card-text h3 { font-family:'Cormorant Garamond',serif; font-size:26px; font-weight:300; color:var(--cream); margin-bottom:8px; }
+  .sub-card-text h3 em { font-style:italic; color:var(--clay); }
+  .sub-card-text p { font-size:13px; color:rgba(247,243,238,.55); line-height:1.7; }
+  .btn-subscribe { padding:16px 32px; background:var(--clay); color:var(--dark); border:none; font-family:inherit; font-size:13px; letter-spacing:.15em; text-transform:uppercase; cursor:pointer; white-space:nowrap; font-weight:500; transition:background .2s; }
+  .btn-subscribe:hover { background:var(--cream); }
+
+  /* EMPTY STATE */
+  .empty-state { text-align:center; padding:80px 40px; background:var(--warm-white); border:1px solid var(--sand); }
+  .empty-state .empty-icon { font-size:48px; margin-bottom:16px; }
+  .empty-state h3 { font-family:'Cormorant Garamond',serif; font-size:24px; font-weight:400; margin-bottom:8px; }
+  .empty-state p { font-size:13px; color:var(--muted); margin-bottom:24px; }
+
+  /* LOADING */
+  .loading-wrap { display:flex; align-items:center; justify-content:center; padding:60px; gap:12px; }
+  .spinner { width:24px; height:24px; border:2px solid var(--sand); border-top-color:var(--earth); border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* MODAL */
+  .modal-overlay { position:fixed; inset:0; background:rgba(28,20,16,.6); z-index:500; display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+  .modal-overlay.show { display:flex; }
+  .modal { background:var(--warm-white); padding:40px; max-width:440px; width:90%; animation:fadeIn .2s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:scale(.97); } to { opacity:1; transform:scale(1); } }
+  .modal h3 { font-family:'Cormorant Garamond',serif; font-size:24px; font-weight:400; margin-bottom:12px; }
+  .modal p { font-size:13px; color:var(--muted); line-height:1.7; margin-bottom:28px; }
+  .modal-btns { display:flex; gap:12px; }
+  .modal-btn-cancel { flex:1; padding:14px; background:transparent; border:1px solid var(--sand); font-family:inherit; font-size:13px; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; }
+  .modal-btn-danger { flex:1; padding:14px; background:var(--rose); color:white; border:none; font-family:inherit; font-size:13px; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; }
+
+  @media (max-width:768px) {
+    nav, .dashboard-wrap { padding-left:20px; padding-right:20px; }
+    .stats-grid { grid-template-columns:repeat(2,1fr); }
+    .subscribe-card { grid-template-columns:1fr; }
+    .product-table { font-size:12px; }
+    .product-thumb { width:40px; height:40px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">Indie<span>·</span>Skin</a>
+  <div class="nav-right">
+    <a href="index.html" class="nav-home">← 메인</a>
+    <span class="nav-brand">브랜드: <strong id="navBrandName">—</strong></span>
+    <button class="btn-logout" onclick="doLogout()">로그아웃</button>
+  </div>
+</nav>
+
+<!-- 삭제 확인 모달 -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <h3>제품을 삭제하시겠습니까?</h3>
+    <p>삭제된 제품은 즉시 목록에서 제거되며 복구할 수 없습니다.</p>
+    <div class="modal-btns">
+      <button class="modal-btn-cancel" onclick="closeDeleteModal()">취소</button>
+      <button class="modal-btn-danger" onclick="confirmDelete()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-wrap">
+
+  <!-- GREETING -->
+  <div class="greeting" id="greeting">
+    <div class="greeting-tag">Brand Dashboard</div>
+    <h1>안녕하세요,<br><em id="greetingBrand">—</em> 님</h1>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card highlight">
+      <div class="stat-card-label">등록 제품</div>
+      <div class="stat-card-num" id="statTotal">—</div>
+      <div class="stat-card-sub">총 등록 제품 수</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">게재 중</div>
+      <div class="stat-card-num" id="statActive">—</div>
+      <div class="stat-card-sub">현재 노출 중인 제품</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">마감 임박</div>
+      <div class="stat-card-num" id="statEnding">—</div>
+      <div class="stat-card-sub">3일 이내 만료 예정</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">무료 잔여일 (평균)</div>
+      <div class="stat-card-num" id="statAvgDays">—</div>
+      <div class="stat-card-sub">일 남음</div>
+    </div>
+  </div>
+
+  <!-- PRODUCT LIST -->
+  <div class="section-header">
+    <h2 class="section-title">등록된 제품</h2>
+    <a href="register.html" class="btn-add">+ 제품 추가 등록</a>
+  </div>
+
+  <div id="productTableWrap">
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <span style="font-size:13px;color:var(--muted);">불러오는 중...</span>
+    </div>
+  </div>
+
+  <!-- SUBSCRIBE CARD -->
+  <div class="subscribe-card" id="subscribeCard" style="display:none;">
+    <div class="sub-card-text">
+      <h3>무료 기간이 <em>곧 종료됩니다</em></h3>
+      <p>구독을 시작하면 제품이 계속 메인 페이지에 노출됩니다.<br>월 ₩29,000 · 언제든 해지 가능</p>
+    </div>
+    <button class="btn-subscribe" onclick="alert('결제 연동은 다음 단계에서 구현됩니다.')">구독 시작하기 →</button>
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL = 'https://wnsloxxseitmfebyhylb.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Induc2xveHhzZWl0bWZlYnloeWxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMjg0MTEsImV4cCI6MjA4OTkwNDQxMX0.wIPvfSmER-JF_k0Aje40_WvQFhEOrPEEG2bNsEj_k1c';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let currentBrand = null;
+let allProducts = [];
+let deleteTargetId = null;
+
+const catLabel = { skincare:'스킨케어', makeup:'메이크업', body:'바디케어', hair:'헤어', perfume:'퍼퓸', '기타':'기타' };
+
+// ── 초기화 ──
+async function init() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  currentUser = session.user;
+
+  // 브랜드 정보
+  const { data: brand } = await db.from('brands').select('*').eq('user_id', currentUser.id).maybeSingle();
+  currentBrand = brand;
+
+  const brandName = brand?.name || currentUser.email;
+  document.getElementById('navBrandName').textContent = brandName;
+  document.getElementById('greetingBrand').textContent = brandName;
+
+  await loadProducts();
+}
+
+// ── 제품 목록 불러오기 ──
+async function loadProducts() {
+  if (!currentBrand) {
+    renderEmpty();
+    return;
+  }
+
+  const { data, error } = await db
+    .from('products_with_days')
+    .select('*')
+    .eq('brand_id', currentBrand.id)
+    .order('registered_at', { ascending: false });
+
+  if (error) { console.error(error); return; }
+  allProducts = data || [];
+
+  updateStats();
+  renderTable();
+}
+
+// ── 통계 업데이트 ──
+function updateStats() {
+  const active = allProducts.filter(p => p.days_left > 3).length;
+  const ending = allProducts.filter(p => p.days_left <= 3 && p.days_left > 0).length;
+  const avgDays = allProducts.length > 0
+    ? Math.round(allProducts.reduce((s, p) => s + (p.days_left || 0), 0) / allProducts.length)
+    : 0;
+
+  document.getElementById('statTotal').textContent = allProducts.length;
+  document.getElementById('statActive').textContent = active;
+  document.getElementById('statEnding').textContent = ending;
+  document.getElementById('statAvgDays').textContent = avgDays;
+
+  // 마감 임박 제품이 있으면 구독 카드 표시
+  if (ending > 0 || allProducts.some(p => p.days_left === 0)) {
+    document.getElementById('subscribeCard').style.display = 'grid';
+  }
+}
+
+// ── 테이블 렌더링 ──
+function renderTable() {
+  const wrap = document.getElementById('productTableWrap');
+  if (!allProducts.length) { renderEmpty(); return; }
+
+  const rows = allProducts.map(p => {
+    const days = p.days_left ?? 0;
+    const pct = Math.round((days / 30) * 100);
+    const cls = days > 10 ? 'safe' : days > 3 ? 'warn' : 'danger';
+    const statusCls = days > 3 ? 'active' : days > 0 ? 'ending' : 'expired';
+    const statusText = days > 3 ? '게재 중' : days > 0 ? '만료 임박' : '만료됨';
+    const imgSrc = p.image_url || 'https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=200&q=60';
+    const fmt = d => { const dt = new Date(d); return `${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`; };
+
+    return `
+      <tr>
+        <td>
+          <div class="product-info">
+            <img class="product-thumb" src="${imgSrc}" alt="${p.name}"
+                 onerror="this.src='https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=200&q=60'">
+            <div>
+              <div class="product-name">${p.name}</div>
+              <div class="product-brand-label">${p.brand_name}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="cat-badge">${catLabel[p.category] || p.category}</span></td>
+        <td>
+          <div class="dday-wrap">
+            <div class="dday-text ${cls}">${days > 0 ? `${days}일 남음` : '오늘 만료'}</div>
+            <div class="dday-bar-bg"><div class="dday-bar ${cls}" style="width:${pct}%"></div></div>
+            <div class="dday-date">~${fmt(p.expires_at)}</div>
+          </div>
+        </td>
+        <td><span class="status-pill status-${statusCls}">● ${statusText}</span></td>
+        <td>${p.price || '—'}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn-action" onclick="window.open('index.html','_blank')">보기</button>
+            <button class="btn-action danger" onclick="openDeleteModal('${p.id}')">삭제</button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <table class="product-table">
+      <thead>
+        <tr>
+          <th>제품</th>
+          <th>카테고리</th>
+          <th>무료 게재 기간</th>
+          <th>상태</th>
+          <th>가격</th>
+          <th>관리</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function renderEmpty() {
+  document.getElementById('productTableWrap').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">🌸</div>
+      <h3>아직 등록된 제품이 없습니다</h3>
+      <p>첫 번째 제품을 등록하고 무료 게재를 시작하세요.</p>
+      <a href="register.html" class="btn-add" style="display:inline-flex;">+ 첫 제품 등록하기</a>
+    </div>`;
+}
+
+// ── 삭제 ──
+function openDeleteModal(id) {
+  deleteTargetId = id;
+  document.getElementById('deleteModal').classList.add('show');
+}
+function closeDeleteModal() {
+  deleteTargetId = null;
+  document.getElementById('deleteModal').classList.remove('show');
+}
+async function confirmDelete() {
+  if (!deleteTargetId) return;
+  await db.from('products').delete().eq('id', deleteTargetId);
+  closeDeleteModal();
+  await loadProducts();
+}
+
+// ── 로그아웃 ──
+async function doLogout() {
+  await db.auth.signOut();
+  window.location.href = 'index.html';
+}
+
+init();
+</script>
+</body>
+</html>
